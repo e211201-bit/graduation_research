@@ -1,0 +1,49 @@
+import pandas as pd
+
+import matplotlib.pyplot as plt
+ 
+# ======== Excelファイルパス ========
+
+file_paths = {
+
+    "70A":  r"C:\Users\okamotolab\Desktop\実験データ - program用\experiment of total 70kA_v_12000~16096.xlsx",
+
+    "100A": r"C:\Users\okamotolab\Desktop\実験データ - program用\experiment of total 100kA_v_12000~16096.xlsx",
+
+    "130A": r"C:\Users\okamotolab\Desktop\実験データ - program用\experiment of total 130kA_v_12000~16096.xlsx",
+
+}
+ 
+colors = {"70A": "red", "100A": "blue", "130A": "green"}
+ 
+plt.figure(figsize=(10, 6))
+ 
+for key, path in file_paths.items():
+
+    df = pd.read_excel(path, header=None, skiprows=1)
+ 
+    freq = pd.to_numeric(df.iloc[:, 8], errors="coerce")  # 周波数
+
+    coh  = pd.to_numeric(df.iloc[:, 5], errors="coerce")  # コヒーレンス
+ 
+    plt.scatter(freq, coh, s=60, alpha=0.8, color=colors[key])
+ 
+plt.xlabel("Frequency [kHz]", fontsize=25)
+
+plt.ylabel("Coherence", fontsize=25)
+
+plt.ylim(0, 1.0)
+
+plt.xticks(fontsize=30)
+
+plt.yticks(fontsize=30)
+
+plt.grid(True, linestyle="--", alpha=0.5)
+
+plt.legend()
+
+plt.tight_layout()
+
+plt.show()
+
+ 
