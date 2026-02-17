@@ -1,0 +1,185 @@
+import numpy as np
+import glob
+import os
+from scipy import signal
+from scipy.interpolate import interp1d
+import pandas as pd
+ 
+# ======================================
+# 基本設定
+# ======================================
+date_list = {"0829", "0902", "0903", "0904", "0909", "0910", "0911", "0917", "0918", "0919"}
+N = 4096
+dt = 0.001 / 1000
+ 
+# ======================================
+# 関数群
+# ======================================
+def compute_fft(signal1, signal2):
+    fft_signal1 = []
+    fft_signal2 = []
+    freq = np.fft.fftfreq(N, dt)
+    freq = freq[:N // 2]
+ 
+    for sig1, sig2 in zip(signal1, signal2):
+        f1 = np.fft.fft(sig1)[:N // 2]
+        f2 = np.fft.fft(sig2)[:N // 2]
+        fft_signal1.append(f1)
+        fft_signal2.append(f2)
+ 
+    return fft_signal1, fft_signal2, freq
+ 
+ 
+def get_max_amplitude(fft_signal1, fft_signal2):
+    max_amp1, max_amp2 = [], []
+    amp1, amp2 = [], []
+ 
+    for f1, f2 in zip(fft_signal1, fft_signal2):
+        a1 = np.abs(f1)
+        a2 = np.abs(f2)
+        scale = 2 / N
+        max_amp1.append(np.max(a1) * scale)
+        max_amp2.append(np.max(a2) * scale)
+        amp1.append(a1)
+        amp2.append(a2)
+ 
+    return max_amp1, max_amp2, amp1, amp2
+ 
+ 
+def get_max_amplitude_freqency(amp_signal1, amp_signal2, freq):
+    freq1, freq2 = [], []
+    for a1, a2 in zip(amp_signal1, amp_signal2):
+        freq1.append(freq[np.argmax(a1)])
+        freq2.append(freq[np.argmax(a2)])
+    return freq1, freq2
+ 
+ 
+def get_Btheta_at_freq(Btheta_list, freq_list, freq_axis):
+    Btheta_values = []
+    used_freqs = []
+ 
+    for Btheta, f in zip(Btheta_list, freq_list):
+        scale = 2 / N
+        idx = np.argmin(np.abs(freq_axis - f))
+        Btheta_values.append(Btheta[idx] * scale)
+        used_freqs.append(freq_axis[idx])
+ 
+    return Btheta_values, used_freqs
+ 
+ 
+def compute_phasedifference_at_maxfreq(fft_signal1, fft_signal2, freq, freq_max1, freq_max2):
+    phase_diff = []
+    for f1, f2, fm1, fm2 in zip(fft_signal1, fft_signal2, freq_max1, freq_max2):
+        idx1 = np.argmin(np.abs(freq - fm1))
+        idx2 = np.argmin(np.abs(freq - fm2))
+        phase1 = np.angle(f1[idx1])
+        phase2 = np.angle(f2[idx2])
+        phase_diff.append(np.degrees(phase2 - phase1))
+    return phase_diff
+ 
+ 
+def get_coherence_and_sample_interpolated(signal1_list, signal2_list, target_freq_list):
+    fs = 1.0 / dt
+    coh_at_target = []
+    used_freqs = []
+ 
+    for s1, s2, tf in zip(signal1_list, signal2_list, target_freq_list):
+        freqs, coh = signal.coherence(
+            s1, s2,
+            fs=fs,
+            nperseg=2048,
+            noverlap=1024,
+            window='hann'
+        )
+ 
+        f_interp = interp1d(freqs, coh, kind='linear', fill_value='extrapolate')
+        coh_at_target.append(float(f_interp(tf)))
+        used_freqs.append(float(tf))
+ 
+    return coh_at_target, used_freqs
+ 
+ 
+# ======================================
+# メインループ
+# ======================================
+while True:
+    print("選択できる日付:", date_list)
+    selected_date = input("実行したい日付を選択してください(終了は e): ")
+ 
+    if selected_date.lower() == "e":
+        print("終了します")
+        break
+ 
+    if selected_date not in date_list:
+        print("選択された日付は存在しません")
+        continue
+ 
+    logfile_path = fr"C:\Users\okamotolab\Desktop\2025\{selected_date}\{selected_date}実験ログ.xlsx"
+    experiment_logfile = pd.read_excel(logfile_path, skiprows=34, nrows=180)
+ 
+    ShotNumber = experiment_logfile.iloc[:, 0]
+    DL850_file = experiment_logfile.iloc[:, 1]
+    keyence = experiment_logfile.iloc[:, 2]
+    Irmp_list = experiment_logfile.iloc[:, 11]
+    frmp_list = experiment_logfile.iloc[:, 12]
+    plasma_status = experiment_logfile.iloc[:, 14]
+ 
+    v_indices = [i for i, st in enumerate(plasma_status) if st == "v" and Irmp_list[i] != 0]
+    n_indices = [i for i, st in enumerate(plasma_status) if st == "n" and Irmp_list[i] != 0]
+ 
+    path1 = fr"C:\Users\okamotolab\Desktop\2025\{selected_date}\DL850"
+    path2 = fr"C:\Users\okamotolab\Desktop\2025\{selected_date}\1chmag"
+ 
+    # ---------- n 用 ----------
+    Irmp_n_list = []
+    Btheta_n_list = []
+    ShotNumber_n = []
+    DL850_file_n = []
+    keyence_n = []
+ 
+    for j in n_indices:
+        dl850_id = str(int(DL850_file[j])).zfill(4) + ".csv"
+        ichmag_id = "mag" + str(int(ShotNumber[j])).zfill(5) + ".csv"
+ 
+        df3 = pd.read_csv(os.path.join(path1, dl850_id), skiprows=16)
+        df4 = pd.read_csv(os.path.join(path2, ichmag_id), skiprows=1)
+ 
+        Irmp_n_list.append((df3.iloc[12000:16096, 2].astype(float) * 42.3).values)
+        Btheta_n_list.append(df4.iloc[12000:16096, 3].astype(float).values)
+ 
+        ShotNumber_n.append(ichmag_id)
+        DL850_file_n.append(dl850_id)
+        keyence_n.append(f"00${int(keyence[j])}")
+ 
+    frmp_n_list = [frmp_list[j] for j in n_indices]
+    Irmp_value_n_list = [Irmp_list[j] for j in n_indices]
+ 
+    # ======================================
+    # n モード処理
+    # ======================================
+    fft_Irmp, fft_Btheta, freq = compute_fft(Irmp_n_list, Btheta_n_list)
+    max_Irmp_amp_n, max_Btheta_amp_n, Irmp_amp_n, Btheta_amp_n = get_max_amplitude(fft_Irmp, fft_Btheta)
+    freq_max1, freq_max2 = get_max_amplitude_freqency(Irmp_amp_n, Btheta_amp_n, freq)
+    Btheta_amplitude_n, appropriate_freq = get_Btheta_at_freq(Btheta_amp_n, freq_max1, freq)
+    phase_diff_n = compute_phasedifference_at_maxfreq(fft_Irmp, fft_Btheta, freq, freq_max1, freq_max2)
+    coh_at_target_n, coh_used_freqs_n = get_coherence_and_sample_interpolated(
+        Irmp_n_list, Btheta_n_list, appropriate_freq
+    )
+ 
+    df_results = pd.DataFrame({
+        "DL850": DL850_file_n,
+        "1chmag": ShotNumber_n,
+        "keyence": keyence_n,
+        "信号電流 最大振幅": max_Irmp_amp_n,
+        "ポロイダル磁場 最大振幅": Btheta_amplitude_n,
+        "位相差": phase_diff_n,
+        "コヒーレンス": coh_at_target_n,
+        "信号電流": Irmp_value_n_list,
+        "印加周波数": frmp_n_list,
+        "対応周波数": appropriate_freq,
+        "コヒーレンス周波数": coh_used_freqs_n
+    })
+ 
+    save_path = fr"C:\Users\okamotolab\Desktop\実験データ - program用\{selected_date}\{selected_date}_プラズマ_12000~16096.xlsx"
+    df_results.to_excel(save_path, index=False)
+    print("保存しました:", save_path)
