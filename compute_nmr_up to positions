@@ -184,3 +184,109 @@ while True:
     print(df_results_1th)
     print(len(df_results_1th))
     ShotNumber_list = df_results_1th["ShotNumber"].tolist()
+while True:
+        print("選択された日付の100Kファイルに処理を実行しますか？","ただ今の日付",selected_date)
+        run_process = input("はい→y いいえ→n  ")
+        if run_process == "n":
+            break
+        if run_process == "y":
+            print("処理を実行中")
+            file_100k = fr"C:\Users\okamotolab\Desktop\実験データ - program用\{selected_date}\100k"
+            matched_100k_csv = read_matched_100K(fr"C:\Users\okamotolab\Desktop\実験データ - program用\{selected_date}\100k",ShotNumber_list)
+            df_results_2th = pd.DataFrame({
+                "100k_csv": matched_100k_csv
+                })
+            pd.set_option("display.max_rows", None)
+            pd.set_option("display.max_columns", None)
+            pd.set_option("display.max_colwidth", None)
+            print(df_results_2th)
+            df_results_3th = compute_average_positions(
+            folder_100k=fr"C:\Users\okamotolab\Desktop\実験データ - program用\{selected_date}\100k",
+            shot_list=matched_100k_csv
+            )
+            horizon_pos_list = df_results_3th.iloc[:,1]
+            vertical_pos_list = df_results_3th.iloc[:,2]
+            pol_results = {}
+            for i in range(3, 15):   # TW2 ～ TW14 を想定
+                if i == 10 or i == 13:
+                    continue
+                func_name = f"compute_TW{i}_BW{i}"
+                if hasattr(measurement_position_poloidal, func_name):
+                    func = getattr(measurement_position_poloidal, func_name)
+                    pol_TWi_BWi = func(
+                        horizon_pos_list,
+                        vertical_pos_list
+                    )
+                    pol_results[f"TW{i}_BW{i}"] = pol_TWi_BWi
+            df_pol = pd.DataFrame(pol_results)   # ← ここが超重要
+            df_pol = df_pol.add_prefix("measurement_poloidal_")
+ 
+            tor_results = {}
+            for i in range(2, 10):   # TW2 ～ TW14 を想定
+                func_name = f"compute_TW{i}_BW{i}"
+                if hasattr(measurement_position_toroidal, func_name):
+                    func = getattr(measurement_position_toroidal, func_name)
+                    tor_TWi_BWi = func(
+                        horizon_pos_list,
+                        vertical_pos_list
+                    )
+                    tor_results[f"TW{i}_BW{i}"] = tor_TWi_BWi
+            df_tor = pd.DataFrame(tor_results)
+            df_tor = df_tor.add_prefix("measurement_toroidal_")
+            plasma_radius = compute_plasma_radius(horizon_pos_list)
+            nmr_pol = {}
+            for i in range(3, 15):
+                if i == 10 or i == 13:
+                    continue
+                key = f"TW{i}_BW{i}"
+                # pol_results にそのキーがあるか確認
+                if key in pol_results:
+                    nmr_pol[key] = normalized_minor_radius.poloidal(
+                        pol_results[key],
+                        plasma_radius
+                    )
+            df_nmr_pol = pd.DataFrame(nmr_pol)
+            df_nmr_pol = df_nmr_pol.add_prefix("normalized_minor_radius_poloidal_")
+ 
+            nmr_tor = {}
+            for i in range(2, 11):
+                key = f"TW{i}_BW{i}"
+                if key in tor_results:
+                    nmr_tor[key] = normalized_minor_radius.toroidal(
+                        tor_results[key],
+                        plasma_radius
+                    )
+            df_nmr_tor = pd.DataFrame(nmr_tor)
+            df_nmr_tor = df_nmr_tor.add_prefix("normalized_minor_radius_toroidal_")
+ 
+ 
+            df_results_3th_new = pd.concat(
+                [
+                    pd.DataFrame({
+                        "cnv_file": matched_100k_csv,
+                        "horizon_distance": horizon_pos_list,
+                        "vertical_distance": vertical_pos_list,
+                        "plasma_radius": plasma_radius
+                        }),
+                    df_pol,
+                    df_tor,
+                    df_nmr_pol,
+                    df_nmr_tor
+                    ],
+                axis=1
+                )
+            print(df_results_3th_new)
+            save_path = fr"C:\Users\okamotolab\Desktop\実験データ - program用\{selected_date}\{selected_date}_計測位置.xlsx"
+            df_results_3th_new.to_excel(save_path, index=False)
+            print("保存が完了しました")
+            import openpyxl
+            wb = openpyxl.load_workbook(save_path)
+            ws = wb.active
+            ws.column_dimensions['A'].width = 10   
+            ws.column_dimensions['B'].width = 14  
+            ws.column_dimensions['C'].width = 14  
+            wb.save(save_path)
+            break
+        else: 
+            print("もう一度入力してください")
+            continue
