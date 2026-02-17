@@ -1,0 +1,186 @@
+import pandas as pd
+import numpy as np
+import glob
+import os
+date_list = ["0902","0903","0904","0909","0910","0911","0917","0918","0919"]
+def read_matched_100K(folder_100k , SN):
+    matched_files = []
+    for file in os.listdir(folder_100k):
+        if file.endswith(".csv"):
+            folders_100k = os.path.splitext(file)[0]
+            if folders_100k in SN:
+                matched_files.append(folders_100k)
+    return matched_files 
+def compute_average_positions(folder_100k, shot_list):
+    results = []
+    for shot in shot_list:
+        file_path = os.path.join(folder_100k, shot + ".csv")
+        df = pd.read_csv(
+            file_path,
+            skiprows=1201,
+            nrows=497
+        )
+        horizon_mean = df.iloc[:, 9].mean()
+        vertical_mean = df.iloc[:, 10].mean()
+        results.append({
+            "file_100k": shot,
+            "horizon_mean": horizon_mean,
+            "vertical_mean": vertical_mean
+        })
+    return pd.DataFrame(results)
+def compute_plasma_radius(horizon_list):
+    plasma_radius = []
+    for i in horizon_list:
+        pd = 11+i
+        plasma_radius.append(pd)
+    return plasma_radius
+class measurement_position_poloidal():
+    def compute_TW3_BW3(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = ((6.95-i)**2 + j**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW4_BW4(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = ((7.15-i)**2 + j**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW5_BW5(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = ((7.35-i)**2 + j**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW6_BW6(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = ((7.55-i)**2 + j**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW7_BW7(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = ((7.75-i)**2 + j**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW8_BW8(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = ((7.95-i)**2 + j**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW9_BW9(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = ((8.15-i)**2 + j**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW11_BW11(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = ((8.55-i)**2 + j**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW12_BW12(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = ((8.75-i)**2 + j**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW14_BW14(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = ((9.15-i)**2 + j**2)**(0.5)
+            distance.append(dis)
+        return distance
+class measurement_position_toroidal():
+    def compute_TW2_BW2(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = (i**2+(7.55-j)**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW3_BW3(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = (i**2+(7.75-j)**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW4_BW4(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = (i**2+(7.95-j)**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW5_BW5(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = (i**2+(8.15-j)**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW6_BW6(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = (i**2+(8.35-j)**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW7_BW7(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = (i**2+(8.55-j)**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW8_BW8(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = (i**2+(8.75-j)**2)**(0.5)
+            distance.append(dis)
+        return distance
+    def compute_TW9_BW9(horizon_list,vertical_list):
+        distance = []
+        for i , j in zip(horizon_list , vertical_list):
+            dis = (i**2+(8.95-j)**2)**(0.5)
+            distance.append(dis)
+        return distance
+class normalized_minor_radius():
+    def poloidal(measurement_poloidal , plasma_radius):
+        nmr = []
+        for i , j in zip(measurement_poloidal , plasma_radius):
+            ρ = i/j 
+            nmr.append(ρ)
+        return nmr
+    def toroidal(measurement_toroidal , plasma_radius):
+        nmr = []
+        for i , j in zip(measurement_toroidal , plasma_radius):
+            ρ = i/j 
+            nmr.append(ρ)
+        return nmr
+while True:
+    print("選択可能な日付",date_list)
+    selected_date = input("実行したい日付を選択してください(終了はe)")
+    if selected_date not in date_list:
+        print("もう一度入力してください")
+        continue
+    if selected_date == "e":
+        break
+    logfile_excel = pd.read_excel(fr"C:\Users\okamotolab\Desktop\実験データ - program用\{selected_date}\{selected_date}実験ログ.xlsx",skiprows=35,nrows=180,header=None)
+    ShotNumber = logfile_excel.iloc[:,0].astype(float)
+    Irmp_list = logfile_excel.iloc[:,11].astype(float)
+    plasma_status = logfile_excel.iloc[:,14].astype(str)
+    n_index = [i for i,st in enumerate(plasma_status) if st == "n" and Irmp_list[i]!=0]
+    df_results_1th = pd.DataFrame({
+        "ShotNumber": ShotNumber[n_index],
+        "摂動磁場電流": Irmp_list[n_index],
+        "プラズマ状態": plasma_status[n_index]
+        })
+    pd.set_option("display.max_rows", None)
+    pd.set_option("display.max_columns", None)
+    pd.set_option("display.max_colwidth", None)
+    df_results_1th["ShotNumber"] = df_results_1th["ShotNumber"].apply(
+    lambda x: f"cnv{int(x):05d}"
+    )
+    print(df_results_1th)
+    print(len(df_results_1th))
+    ShotNumber_list = df_results_1th["ShotNumber"].tolist()
